@@ -32,10 +32,10 @@ if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] 
 hf_token = os.getenv("hf_token")
 
 
-db = FAISS.load_local("./funcheap_2024-04-26_2024-06-25_db",
-                      HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cpu'}),
-                      allow_dangerous_deserialization=True).as_retriever()
-st.session_state['retriever'] = db
+# db = FAISS.load_local("./funcheap_2024-04-26_2024-06-25_db",
+#                       HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cpu'}),
+#                       allow_dangerous_deserialization=True).as_retriever()
+# st.session_state['retriever'] = db
 
 
 with st.sidebar:
