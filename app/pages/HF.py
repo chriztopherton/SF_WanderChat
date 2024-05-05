@@ -16,7 +16,7 @@ from typing import Literal
 import os 
 from dotenv import load_dotenv
 
-from utils.self_rag import * 
+# from utils.self_rag import * 
 from utils.UI import *
 
 load_dotenv()
