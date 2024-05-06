@@ -14,8 +14,6 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain.vectorstores import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain.embeddings.openai import OpenAIEmbeddings
-
-
 import re
 import requests
 from typing import Literal
@@ -47,14 +45,14 @@ hf_token = os.getenv("hf_token")
 # st.session_state['retriever'] = db
 
 
-with st.sidebar:
-    with st.expander("HF token"):
-        # user_hf_token = st.text_input("","",key="hf_key")
-        st.session_state['user_hf_token'] = st.secrets['hf_token']
+# with st.sidebar:
+    # with st.expander("HF token"):
+    #     # user_hf_token = st.text_input("","",key="hf_key")
+    #     st.session_state['user_hf_token'] = st.secrets['hf_token']
         
-    with st.expander("LLM Inference Endpoint"):
-        # model_base_url = st.text_input("","",key="model_key")
-        st.session_state['model_base_url'] = st.secrets['model_base_url']
+    # with st.expander("LLM Inference Endpoint"):
+    #     # model_base_url = st.text_input("","",key="model_key")
+    #     st.session_state['model_base_url'] = st.secrets['model_base_url']
         
 
 system_prompt = '''Answer the question as if you are a travel agent and your goal is to provide excellent customer service and to provide
