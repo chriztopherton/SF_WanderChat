@@ -34,6 +34,7 @@ if 'user_hf_token' not in st.session_state: st.session_state['user_hf_token'] = 
 if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] = ''
 
 hf_token = os.getenv("hf_token")
+os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
 
 # pinecone = Pinecone()
 
@@ -61,7 +62,7 @@ system_prompt = '''Answer the question as if you are a travel agent and your goa
 index_name = 'wanderchat-travel-advisory-rag'
 
 embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['openai_api_key'])
+embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
 
 vectorstore = Pinecone.from_existing_index(
     index_name, embed_model.embed_query)
