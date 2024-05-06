@@ -12,7 +12,7 @@ from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain.vectorstores import Pinecone
-import pinecone
+# import pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain.embeddings.openai import OpenAIEmbeddings
 
