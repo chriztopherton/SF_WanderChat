@@ -61,7 +61,7 @@ system_prompt = '''Answer the question as if you are a travel agent and your goa
 index_name = 'wanderchat-travel-advisory-rag'
 
 embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
+embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['openai_api_key'])
 
 vectorstore = Pinecone.from_existing_index(
     index_name, embed_model.embed_query)
