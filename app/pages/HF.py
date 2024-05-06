@@ -26,9 +26,6 @@ from utils.UI import *
 load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
-# add_logo("./static/San_Jose_State_Spartans_logo.png","WanderChat, a context-aware travel chatbot.")
-
-# st.sidebar.title("Custom model")
 
 if 'user_hf_token' not in st.session_state: st.session_state['user_hf_token'] = ''
 if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] = ''
@@ -36,36 +33,23 @@ if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] 
 hf_token = os.getenv("hf_token")
 os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
 
-# pinecone = Pinecone()
 
+index_dict = {'SF Bay Area Activities':'wanderchat-funcheap-rag',
+              'U.S. Travel Advisory':'wanderchat-travel-advisory-rag'}
 
-
-# db = FAISS.load_local("./funcheap_2024-04-26_2024-06-25_db",
-#                       HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2', model_kwargs={'device': 'cpu'}),
-#                       allow_dangerous_deserialization=True).as_retriever()
-# st.session_state['retriever'] = db
-
-
-# with st.sidebar:
-    # with st.expander("HF token"):
-    #     # user_hf_token = st.text_input("","",key="hf_key")
-    #     st.session_state['user_hf_token'] = st.secrets['hf_token']
-        
-    # with st.expander("LLM Inference Endpoint"):
-    #     # model_base_url = st.text_input("","",key="model_key")
-    #     st.session_state['model_base_url'] = st.secrets['model_base_url']
-        
+with st.sidebar:
+    database = st.selectbox("Choose knowledge base:",index_dict.keys())
 
 system_prompt = '''Answer the question as if you are a travel agent and your goal is to provide excellent customer service and to provide
         personalized travel recommendations with reasonings based on their question. Do not repeat yourself or include any links or HTML.'''
         
-index_name = 'wanderchat-travel-advisory-rag'
+
 
 embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
 
 vectorstore = Pinecone.from_existing_index(
-    index_name, embed_model.embed_query)
+    index_dict.get(database), embed_model.embed_query)
 
 headers = {"Accept" : "application/json","Authorization": f"Bearer {st.secrets['hf_token']}","Content-Type": "application/json" }
 def query(payload):
@@ -73,9 +57,7 @@ def query(payload):
   return response.json()
 
 def find_match(input):
-    # input_em = embeddings.encode(input).tolist()
     result = vectorstore.similarity_search(input)
-    # return result['matches'][0]['metadata']['text']+"\n"+result['matches'][1]['metadata']['text']
     return ' '.join([d.page_content for d in result])
     
 if st.secrets['hf_token'] and st.secrets['model_base_url']:
@@ -103,12 +85,10 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                 st.markdown(prompt)
                 st.session_state.message.append({"role":"user","content":prompt})
                 
-                #st.sidebar.write(retrieval_grader(prompt))
                 
             with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
                         time.sleep(1)
-                        # responce=convo.predict(input=prompt)
                         
                         context = find_match(prompt)
                         
@@ -116,7 +96,6 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                             Context: {context} \n\n
                             Question: {prompt}"""
                         
-                        #st.sidebar.write(prompt)
 
                             
                         input_len = len(prompt.split())
@@ -144,7 +123,7 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         responce = re.sub(r'Final answer: .*$', '', answer, flags=re.DOTALL) #RAFT specific
                         
 
-                                                # chat_completion = client.chat.completions.create(
+                        # chat_completion = client.chat.completions.create(
                         #     model="tgi",messages=[{"role": "user","content": f"Context:\n {context} \n\n Query:\n{prompt}"}],stream=False,max_tokens=1350)
                         #     # model="tgi",messages=[{"role": "user","content": prompt}],stream=False,max_tokens=1300)
                         # responce = chat_completion.choices[0].message.content
