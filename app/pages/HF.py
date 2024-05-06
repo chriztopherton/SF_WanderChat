@@ -93,7 +93,7 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
             memoryforchat.save_context({"input":message["human"]},{"outputs":message["AI"]})
 
     if "message" not in st.session_state:
-        st.session_state.message = [{"role":"assistant","content":"how may i help you "}]
+        st.session_state.message = [{"role":"assistant","content":"Hello, I am Wanderchat. How may I assist you?"}]
     for message1 in st.session_state.message:
         with st.chat_message(message1["role"]):
             st.markdown(message1["content"])
