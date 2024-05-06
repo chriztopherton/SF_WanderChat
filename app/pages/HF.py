@@ -135,7 +135,8 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         end_time = time.time()
                         duration = end_time - start_time
                         
-                        st.sidebar.write(answer)
+                        with st.sidebar("Errors"):
+                            st.write(answer)
                         
                         answer = answer[0]['generated_text'].replace(f"<s>[INST] {prompt} [/INST]","")
                         answer = answer.replace(" . ",". ").strip()
