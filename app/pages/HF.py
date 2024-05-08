@@ -14,6 +14,9 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain.vectorstores import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_community.document_transformers import (
+    LongContextReorder,
+)
 import re
 import requests
 from typing import Literal
@@ -26,6 +29,13 @@ from utils.UI import *
 load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
+
+logo = Image.open("../app/static/wanderchat_logo.png")
+modified_logo = logo.resize((500, 500))
+col1, col2 = st.sidebar.columns([3,4])
+col1.image(logo)
+col2.header("A context-aware travel chatbot.")
+
 
 if 'user_hf_token' not in st.session_state: st.session_state['user_hf_token'] = ''
 if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] = ''
@@ -41,15 +51,15 @@ with st.sidebar:
     database = st.selectbox("Choose knowledge base:",index_dict.keys())
 
 system_prompt = '''Answer the question as if you are a travel agent and your goal is to provide excellent customer service and to provide
-        personalized travel recommendations with reasonings based on their question. Do not repeat yourself or include any links or HTML.'''
+        personalized travel recommendations with reasonings based on their question. 
+        Do not repeat yourself or include any links or HTML.'''
         
-
 
 embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
 
 vectorstore = Pinecone.from_existing_index(
-    index_dict.get(database), embed_model.embed_query)
+    index_dict.get(database), embed_model.embed_query).as_retriever()
 
 headers = {"Accept" : "application/json","Authorization": f"Bearer {st.secrets['hf_token']}","Content-Type": "application/json" }
 def query(payload):
@@ -57,8 +67,10 @@ def query(payload):
   return response.json()
 
 def find_match(input):
-    result = vectorstore.similarity_search(input)
-    return ' '.join([d.page_content for d in result])
+    result = vectorstore.invoke(input)
+    reordering = LongContextReorder()
+    reordered_docs = reordering.transform_documents(result)
+    return ' '.join([d.page_content for d in reordered_docs])
     
 if st.secrets['hf_token'] and st.secrets['model_base_url']:
     
@@ -92,18 +104,26 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         
                         context = find_match(prompt)
                         
-                        prompt = f"""{system_prompt}
-                            Context: {context} \n\n
-                            Question: {prompt}"""
+                        augmented_prompt = f"""{system_prompt}
                         
+                        DOCUMENT:
+                        {context}
 
-                            
-                        input_len = len(prompt.split())
+                        QUESTION:
+                        {prompt}
+
+                        INSTRUCTIONS:
+                        Answer the users QUESTION using the DOCUMENT text above.
+                        Keep your answer ground in the facts of the DOCUMENT.
+                        If the DOCUMENT doesn’t contain the facts to answer the QUESTION say 'I do not know'
+                        """
+                        
+                        input_len = len(augmented_prompt.split())
                         max_token_len = 1500-input_len-100 #100 buffer
 
                         start_time = time.time()
                         while True: #while loop for token
-                            answer = query({'inputs': f"<s>[INST] {prompt} [/INST]",
+                            answer = query({'inputs': f"<s>[INST] {augmented_prompt} [/INST]",
                                         'parameters': {"max_new_tokens": max_token_len}})
                             if 'error' not in answer:
                                 break  #exit the while loop if there is no error
@@ -114,10 +134,10 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         end_time = time.time()
                         duration = end_time - start_time
                         
-                        with st.sidebar.expander("Errors"):
-                            st.write(answer)
+                        # with st.sidebar.expander("Details"):
+                        #     st.write(answer)
                         
-                        answer = answer[0]['generated_text'].replace(f"<s>[INST] {prompt} [/INST]","")
+                        answer = answer[0]['generated_text'].replace(f"<s>[INST] {augmented_prompt} [/INST]","")
                         answer = answer.replace(" . ",". ").strip()
                         answer = re.sub(r'<ANSWER>.*$', '', answer, flags=re.DOTALL) #RAFT specific
                         responce = re.sub(r'Final answer: .*$', '', answer, flags=re.DOTALL) #RAFT specific
