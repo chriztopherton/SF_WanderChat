@@ -31,7 +31,7 @@ load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
 
-render_image("../static/wanderchat_logo.png")
+# render_image("../static/wanderchat_logo.png")
 # logo = Image.open("../app/static/wanderchat_logo.png")
 # modified_logo = logo.resize((500, 500))
 # col1, col2 = st.sidebar.columns([3,4])
