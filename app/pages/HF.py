@@ -22,6 +22,7 @@ import requests
 from typing import Literal
 import os 
 from dotenv import load_dotenv
+from utils.render_image import *
 
 # from utils.self_rag import * 
 from utils.UI import *
@@ -29,6 +30,8 @@ from utils.UI import *
 load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
+
+render_image("../app/static/wanderchat_logo.png")
 
 # logo = Image.open("../app/static/wanderchat_logo.png")
 # modified_logo = logo.resize((500, 500))
