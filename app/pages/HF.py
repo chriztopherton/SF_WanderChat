@@ -30,11 +30,11 @@ load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
 
-logo = Image.open("../app/static/wanderchat_logo.png")
-modified_logo = logo.resize((500, 500))
-col1, col2 = st.sidebar.columns([3,4])
-col1.image(logo)
-col2.header("A context-aware travel chatbot.")
+# logo = Image.open("../app/static/wanderchat_logo.png")
+# modified_logo = logo.resize((500, 500))
+# col1, col2 = st.sidebar.columns([3,4])
+# col1.image(logo)
+# col2.header("A context-aware travel chatbot.")
 
 
 if 'user_hf_token' not in st.session_state: st.session_state['user_hf_token'] = ''
