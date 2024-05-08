@@ -21,7 +21,6 @@ import re
 import requests
 from typing import Literal
 import os 
-from io import BytesIO
 from dotenv import load_dotenv
 
 # from utils.self_rag import * 
@@ -31,9 +30,7 @@ load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
 
-
-img_response = requests.get("https://github.com/chriztopherton/SF_WanderChat/blob/main/app/static/wanderchat_logo.png")
-logo = Image.open(BytesIO(img_response.content))
+logo = Image.open("../app/static/wanderchat_logo.png")
 modified_logo = logo.resize((500, 500))
 col1, col2 = st.sidebar.columns([3,4])
 col1.image(logo)
