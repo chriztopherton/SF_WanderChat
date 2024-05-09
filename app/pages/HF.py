@@ -86,10 +86,10 @@ with st.sidebar:
     ensemble_retriever = EnsembleRetriever(
         retrievers=retrievers,weights=[weights for i in range(len(retrievers))])
     
-    selected_keys = frozenset(database)
-    greeting = greetings_map.get(selected_keys)
+    # selected_keys = frozenset(database)
+    # greeting = greetings_map.get(selected_keys)
     
-    st.session_state.message = [{"role":"assistant","content":"Hello, I am Wanderchat. " + greeting}]
+    # st.session_state.message = [{"role":"assistant","content":"Hello, I am Wanderchat. " + greeting}]
 
 system_prompt = '''Answer the question as if you are a travel agent and your goal is to provide excellent customer service and to provide
         personalized travel recommendations with reasonings based on their question. 
