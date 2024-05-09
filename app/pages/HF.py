@@ -17,6 +17,7 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain_community.document_transformers import (
     LongContextReorder,
 )
+from langchain.retrievers import EnsembleRetriever
 import re
 import requests
 from typing import Literal
@@ -24,20 +25,11 @@ import os
 from dotenv import load_dotenv
 from utils.render_image import *
 
-# from utils.self_rag import * 
 from utils.UI import *
 
 load_dotenv()
 
 st.set_page_config(page_title="WanderChat", page_icon=":speech_balloon:",layout="wide")
-
-# render_image("../static/wanderchat_logo.png")
-# logo = Image.open("../app/static/wanderchat_logo.png")
-# modified_logo = logo.resize((500, 500))
-# col1, col2 = st.sidebar.columns([3,4])
-# col1.image(logo)
-# col2.header("A context-aware travel chatbot.")
-
 
 if 'user_hf_token' not in st.session_state: st.session_state['user_hf_token'] = ''
 if 'model_base_url' not in st.session_state: st.session_state['model_base_url'] = ''
@@ -46,22 +38,35 @@ hf_token = os.getenv("hf_token")
 os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
 
 
-index_dict = {'SF Bay Area Activities':'wanderchat-funcheap-rag',
+index_dict = {'Reddit':'wanderchat-reddit-rag',
+              'SF Bay Area Activities':'wanderchat-funcheap-rag',
               'U.S. Travel Advisory':'wanderchat-travel-advisory-rag'}
 
+embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
+
+
 with st.sidebar:
-    database = st.selectbox("Choose knowledge base:",index_dict.keys())
+    database = st.multiselect("Choose knowledge base:",index_dict.keys(),'Reddit')
+    
+    #define list to store retrievers
+    retrievers = []
+    for i in database:
+        #connect to Pinecone vectore store
+        vectorstore = Pinecone.from_existing_index(
+            index_dict.get(i), embed_model.embed_query).as_retriever()
+        retrievers.append(vectorstore)
+
+    #uniform weights
+    weights = 1/(len(retrievers))
+    #define ensemble retriever from list of retrievers
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=retrievers,weights=[weights for i in range(len(retrievers))])
 
 system_prompt = '''Answer the question as if you are a travel agent and your goal is to provide excellent customer service and to provide
         personalized travel recommendations with reasonings based on their question. 
         Do not repeat yourself or include any links or HTML.'''
         
 
-embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-embed_model = OpenAIEmbeddings(model="text-embedding-ada-002",openai_api_key = st.secrets['OPENAI_API_KEY'])
-
-vectorstore = Pinecone.from_existing_index(
-    index_dict.get(database), embed_model.embed_query).as_retriever()
 
 headers = {"Accept" : "application/json","Authorization": f"Bearer {st.secrets['hf_token']}","Content-Type": "application/json" }
 def query(payload):
@@ -69,18 +74,18 @@ def query(payload):
   return response.json()
 
 def find_match(input):
-    result = vectorstore.invoke(input)
+    result = ensemble_retriever.invoke(input)
     reordering = LongContextReorder()
     reordered_docs = reordering.transform_documents(result)
     return ' '.join([d.page_content for d in reordered_docs])
     
 if st.secrets['hf_token'] and st.secrets['model_base_url']:
     
-    chat = ChatOpenAI(model_name="tgi",openai_api_key=st.session_state['user_hf_token'],openai_api_base=st.session_state['model_base_url'],)
-    client = OpenAI(base_url=st.session_state['model_base_url'], api_key=st.session_state['user_hf_token'])
-    st.session_state['llm'] = chat
+    # chat = ChatOpenAI(model_name="tgi",openai_api_key=st.session_state['user_hf_token'],openai_api_base=st.session_state['model_base_url'],)
+    # client = OpenAI(base_url=st.session_state['model_base_url'], api_key=st.session_state['user_hf_token'])
+    # st.session_state['llm'] = chat
     memoryforchat=ConversationBufferMemory()
-    convo=ConversationChain(memory=memoryforchat,llm=chat,verbose=True)
+    # convo=ConversationChain(memory=memoryforchat,llm=chat,verbose=True)
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history=[]
@@ -99,11 +104,9 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                 st.markdown(prompt)
                 st.session_state.message.append({"role":"user","content":prompt})
                 
-                
             with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        time.sleep(1)
-                        
+                with st.spinner("Thinking..."):
+                    try:
                         context = find_match(prompt)
                         
                         augmented_prompt = f"""{system_prompt}
@@ -119,6 +122,8 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         Keep your answer ground in the facts of the DOCUMENT.
                         If the DOCUMENT doesn’t contain the facts to answer the QUESTION say 'I do not know'
                         """
+                        
+                        print(augmented_prompt)
                         
                         input_len = len(augmented_prompt.split())
                         max_token_len = 1500-input_len-100 #100 buffer
@@ -136,26 +141,16 @@ if st.secrets['hf_token'] and st.secrets['model_base_url']:
                         end_time = time.time()
                         duration = end_time - start_time
                         
-                        # with st.sidebar.expander("Details"):
-                        #     st.write(answer)
-                        
                         answer = answer[0]['generated_text'].replace(f"<s>[INST] {augmented_prompt} [/INST]","")
                         answer = answer.replace(" . ",". ").strip()
                         answer = re.sub(r'<ANSWER>.*$', '', answer, flags=re.DOTALL) #RAFT specific
                         responce = re.sub(r'Final answer: .*$', '', answer, flags=re.DOTALL) #RAFT specific
                         
-
-                        # chat_completion = client.chat.completions.create(
-                        #     model="tgi",messages=[{"role": "user","content": f"Context:\n {context} \n\n Query:\n{prompt}"}],stream=False,max_tokens=1350)
-                        #     # model="tgi",messages=[{"role": "user","content": prompt}],stream=False,max_tokens=1300)
-                        # responce = chat_completion.choices[0].message.content
-                        
-                        # responce = responce.replace(" . ",". ").strip()
-                        # responce = re.sub(r'<ANSWER>.*$', '', responce, flags=re.DOTALL) #RAFT specific
-                        # responce = re.sub(r'Final answer: .*$', '', responce, flags=re.DOTALL) #RAFT specific
-                        
+                        st.write(responce)
+                        st.session_state.message.append({"role":"assistant","content":responce})
+                        message={'human':prompt,"AI":responce}
+                        st.session_state.chat_history.append(message)
+                    except:
+                        responce = "Error generating response. Please ask again."
                         st.write(responce)
                         
-            st.session_state.message.append({"role":"assistant","content":responce})
-            message={'human':prompt,"AI":responce}
-            st.session_state.chat_history.append(message)
